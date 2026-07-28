@@ -5,9 +5,9 @@ int main(){
 
 	QCSVContext qcvctx = QCSVInit("test.csv");
 	u32 x , y;
-	printf("x: ");
+	printf("\nx: ");
 	scanf("%d", &x);
-	printf("y: ");
+	printf("\ny: ");
 	scanf("%d", &y);
 
 	char* bohacell = QCSVGetCell(x, y, &qcvctx);
