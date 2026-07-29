@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <unistd.h>
 typedef unsigned char  u8 ;
 typedef unsigned short u16;
 typedef unsigned int   u32;
@@ -86,6 +87,29 @@ static void*qcsv_PushBuffer(void* val , u32 sizeofstr ,size_t pos,  size_t* data
 		((u8*)data)[i+pos]=((u8*)val)[i];
 	}
 	*usedData+=sizeofstr;
+	
+	///*	
+	usleep(100000);
+	system("clear");
+	for(int i = 0 , linenum = 0 ; i < *usedData ; i++){
+		if(((u8*)data)[i]=='\n'){
+			linenum++;
+			printf("\n%d :",linenum);
+			continue;
+		}
+		if(i==pos)
+		{
+			printf("[%c]",*(u8*)(data+i));
+		}
+		else{
+			printf("%c",*(u8*)(data+i));
+		}
+
+	}
+	//*/
+	fflush(stdout);
+	
+
 	return data;
 }
 static void*qcsv_PushChar   (char val  ,size_t pos,  size_t* dataSize , size_t* usedData , void* data){
@@ -314,21 +338,17 @@ static char* QCSVGetCell(int x , int y , QCSVContext* ctx){
 static void* QCSVSetCell(const char* data,int x , int y , QCSVContext* ctx){
 
 	if(y>=ctx->linesCount){
-		
-		ctx->lines=(int*)qcsv_PushCountInteger(ctx->datasize, ctx->linesCount, &ctx->linememsize, &ctx->linesCount, ctx->lines);
-		ctx->data=(u8*)qcsv_PushChar('\n', ctx->datasize-1, &ctx->datamemsize, &ctx->datasize, ctx->data);
-		ctx->cellCount++;
-		
 		for(int i = ctx->linesCount-1 ; i<y ; i++){
-		
+			ctx->lines=(int*)qcsv_PushCountInteger(ctx->datasize-1, ctx->linesCount, &ctx->linememsize, &ctx->linesCount, ctx->lines);
+			ctx->data=(u8*)qcsv_PushChar('\n', ctx->datasize-1, &ctx->datamemsize, &ctx->datasize, ctx->data);
+			ctx->cellCount++;
+
 			for(int ii = 0 ; ii < ctx->maxrowscount ; ii++){
 				ctx->data=(u8*)qcsv_PushChar(',', ctx->datasize-1, &ctx->datamemsize, &ctx->datasize, ctx->data);
+				qcsvrebaselines(ctx, y, 1);
 				ctx->cellCount++;
 			}
 			
-			ctx->lines=(int*)qcsv_PushCountInteger(ctx->datasize, ctx->linesCount, &ctx->linememsize, &ctx->linesCount, ctx->lines);
-			ctx->data=(u8*)qcsv_PushChar('\n', ctx->datasize, &ctx->datamemsize, &ctx->datasize, ctx->data);
-			ctx->cellCount++;
 		}
 	}
 	
@@ -337,50 +357,52 @@ static void* QCSVSetCell(const char* data,int x , int y , QCSVContext* ctx){
 
 	int  rowcell = 0;
 	bool textbrakets=false;
-	u32  endofrow= (y<ctx->linesCount-1)?ctx->lines[y]:ctx->datasize;
-	
 
 	for(int i = y?ctx->lines[y-1]:0;i< (y<ctx->linesCount-1)?ctx->lines[y]:ctx->datasize;i++){
 		
-		dbg(rowcell);
 		
 				
-		if(i+1>=(y<ctx->linesCount-1)?ctx->lines[y]:ctx->datasize){
+		if(i+1>=(y<ctx->linesCount-1)?ctx->lines[y]:ctx->datasize && rowcell<x){
 			dbg(x-rowcell);
 			for(int ii = 0; ii < x-rowcell; ii++){
 				ctx->data=(u8*)qcsv_PushChar(',', i, &ctx->datamemsize, &ctx->datasize, ctx->data);
 				qcsvrebaselines(ctx, y, 1);
-				ctx->cellCount++;	
-
-				rowcell++;
+				ctx->cellCount++;
 			}
 		}
-
 
 		if(rowcell==x){
 			u32 len = qcsvmin(strlen(data),1024);
 			for(int c = 0 ; c < len ; c++){
 				if((data[c]=='"' || data[c]==',')&&c&&data[0]!='"'){
 					ctx->data=(u8*)qcsv_PushChar('"', i, &ctx->datamemsize, &ctx->datasize, ctx->data);
+				
 				}
 				if(data[c]=='"'){
 					ctx->data=(u8*)qcsv_PushBuffer((void*)"”",strlen("”"), i+c, &ctx->datamemsize, &ctx->datasize, ctx->data);//same same , but defrent
 					c+=strlen("”")-1;
 				}else {
-					ctx->data=(u8*)qcsv_PushChar(data[c], ctx->datasize, &ctx->datamemsize, &ctx->datasize, ctx->data);
+					ctx->data=(u8*)qcsv_PushChar(data[c], i+c, &ctx->datamemsize, &ctx->datasize, ctx->data);
 				}
 				if(ctx->data[i]=='"' && c+1>=len){
 					ctx->data=(u8*)qcsv_PushChar('"', i+c, &ctx->datamemsize, &ctx->datasize, ctx->data);
 
 				}
-
+				
+				dbg(i);
+				dbg(rowcell);
+				printf("\n");
 			}
+
+			qcsvrebaselines(ctx, y, len);
+			i+=rowcell;
 		}
-		
-		if(rowcell>x)break;
-		if(ctx->data[i]==',' && !textbrakets){rowcell++;/*continue*/;}
+		dbg(rowcell);
+		dbg(i);	
+		if(ctx->data[i]==',' && !textbrakets){rowcell++;/*continue;*/}
 		if(ctx->data[i]=='\n'){rowcell=0;/*continue;*/}
 		
+		if(rowcell>x)break;
 		if(ctx->data[i]=='"'){
 			textbrakets=!textbrakets;
 		}

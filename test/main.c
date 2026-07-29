@@ -12,9 +12,7 @@ int main(){
 
 	char* bohacell = QCSVGetCell(x, y, &qcvctx);
 	
-	QCSVSetCell("LAMA LAMA LAMA LAMA LAMA", 40,40, &qcvctx);
+	QCSVSetCell("LAMA LAMA LAMA , \"LAMA\"? LAMA", 40,40, &qcvctx);
 	QCSVSave("test.csv", &qcvctx);
 	printf("\nx:%d, y:%d :  %s\n",x,y,bohacell);
-
-	
 }
